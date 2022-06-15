@@ -79,9 +79,8 @@ function App() {
   const handleFilterItems = (type) => {
     setFilterType(type);
   };
-
-  const amountDone = items.filter((item) => item.done).length;
-
+  
+  const amountDone = items.length > 0 ? items.filter((item) => item.done).length : 0;
   const amountLeft = items.length - amountDone;
 
   const filteredItems =
