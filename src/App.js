@@ -7,28 +7,46 @@ import "./App.css";
 const buttons = [
   {
     type: "all",
-    label: "All",
+    label: "All"
   },
   {
     type: "active",
-    label: "Active",
+    label: "Active"
   },
   {
     type: "done",
-    label: "Done",
+    label: "Done"
+  }
+];
+
+const toDoItems = [
+  {
+    key: uuidv4(),
+    label: "Have fun"
   },
+  {
+    key: uuidv4(),
+    label: "Spread Empathy"
+  },
+  {
+    key: uuidv4(),
+    label: "Generate Value"
+  }
 ];
 
 function App() {
   const [itemToAdd, setItemToAdd] = useState("");
-  
+
   const [searchTerm, setSearchTerm] = useState("");
 
   //arrow declaration => expensive computation ex: API calls
-  const [items, setItems] = useState(() => JSON.parse(localStorage.getItem('items')));
-  
+  const localItems = JSON.parse(localStorage.getItem("items"));
+  const [items, setItems] = useState(() =>
+    localItems == null ? toDoItems : localItems
+  );
+
   useEffect(() => {
-    localStorage.setItem('items', JSON.stringify(items));
+    localStorage.setItem("items", JSON.stringify(items));
   }, [items]);
 
   const [filterType, setFilterType] = useState("");
@@ -44,7 +62,7 @@ function App() {
   const handleAddItem = () => {
     setItems((prevItems) => [
       { label: itemToAdd, key: uuidv4() },
-      ...prevItems,
+      ...prevItems
     ]);
 
     setItemToAdd("");
@@ -68,19 +86,21 @@ function App() {
         } else return item;
       })
     );
-  }
+  };
 
   const deleteItem = ({ key }) => {
     //console.log(key);
     const newList = items.filter((item) => item.key !== key);
     setItems(newList);
-  }
+  };
 
   const handleFilterItems = (type) => {
     setFilterType(type);
   };
-  
-  const amountDone = items.length > 0 ? items.filter((item) => item.done).length : 0;
+
+  const amountDone =
+    items.length > 0 ? items.filter((item) => item.done).length : 0;
+
   const amountLeft = items.length - amountDone;
 
   const filteredItems =
@@ -128,40 +148,49 @@ function App() {
 
       {/* List-group */}
       <ul className="list-group todo-list">
-          {filteredItems.length > 0 && filteredItems.filter((item) => {
-            if (searchTerm === "") {
-              return item
-            } else if (item.label.toLowerCase().includes(searchTerm.toLowerCase())) {
-              return item
-            }
-          }).map((item) => (
-            <li key={item.key} className="list-group-item">
-              <span className={`todo-list-item${item.done ? " done" : ""} todo-list-item${item.important ? " important" : ""}`}>
+        {filteredItems.length > 0 &&
+          filteredItems
+            .filter((item) => {
+              if (searchTerm === "") {
+                return item;
+              } else if (
+                item.label.toLowerCase().includes(searchTerm.toLowerCase())
+              ) {
+                return item;
+              }
+            })
+            .map((item) => (
+              <li key={item.key} className="list-group-item">
                 <span
-                  className="todo-list-item-label"
-                  onClick={() => handleItemDone(item)}
-                > 
-                  {item.label}
+                  className={`todo-list-item${
+                    item.done ? " done" : ""
+                  } todo-list-item${item.important ? " important" : ""}`}
+                >
+                  <span
+                    className="todo-list-item-label"
+                    onClick={() => handleItemDone(item)}
+                  >
+                    {item.label}
+                  </span>
+
+                  <button
+                    type="button"
+                    className="btn btn-outline-danger btn-sm float-right"
+                    onClick={() => deleteItem(item)}
+                  >
+                    <i className="fa fa-trash-o" />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn btn-outline-success btn-sm float-right "
+                    onClick={() => handleImportant(item)}
+                  >
+                    <i className="fa fa-exclamation" />
+                  </button>
                 </span>
-
-                <button
-                  type="button"
-                  className="btn btn-outline-danger btn-sm float-right"
-                  onClick={() => deleteItem(item)}
-                >
-                  <i className="fa fa-trash-o" />
-                </button>
-
-                <button
-                  type="button"
-                  className="btn btn-outline-success btn-sm float-right "
-                  onClick={() => handleImportant(item)}
-                >
-                  <i className="fa fa-exclamation" />
-                </button>
-              </span>
-            </li>
-          ))}
+              </li>
+            ))}
       </ul>
 
       {/* Add form */}
