@@ -1,135 +1,109 @@
-import { useState } from "react";
-import { useEffect } from "react";
-import { v4 as uuidv4 } from "uuid";
-import "./App.css";
+import { useEffect, useState } from "react";
+import "./styles.css";
+import { TodoistApi } from "@doist/todoist-api-typescript";
+import axios from "axios";
 
-// button-group
 const buttons = [
-  {
-    type: "all",
-    label: "All"
-  },
   {
     type: "active",
     label: "Active"
   },
   {
-    type: "done",
-    label: "Done"
-  }
-];
-
-const toDoItems = [
-  {
-    key: uuidv4(),
-    label: "Have fun"
-  },
-  {
-    key: uuidv4(),
-    label: "Spread Empathy"
-  },
-  {
-    key: uuidv4(),
-    label: "Generate Value"
+    type: "completed",
+    label: "Completed"
   }
 ];
 
 function App() {
+  const [activeItems, setActiveItems] = useState([]);
+  const [completedItems, setCompletedItems] = useState([]);
+
   const [itemToAdd, setItemToAdd] = useState("");
-
-  const [searchTerm, setSearchTerm] = useState("");
-
-  //arrow declaration => expensive computation ex: API calls
-  const localItems = JSON.parse(localStorage.getItem("items"));
-  const [items, setItems] = useState(() =>
-    localItems == null ? toDoItems : localItems
-  );
-
-  useEffect(() => {
-    localStorage.setItem("items", JSON.stringify(items));
-  }, [items]);
-
-  const [filterType, setFilterType] = useState("");
-
-  const handleChangeSearchTerm = (event) => {
-    setSearchTerm(event.target.value);
-  };
-
   const handleChangeItem = (event) => {
     setItemToAdd(event.target.value);
   };
 
-  const handleAddItem = () => {
-    setItems((prevItems) => [
-      { label: itemToAdd, key: uuidv4() },
-      ...prevItems
-    ]);
+  const [searchValue, setSearchValue] = useState("");
 
+  const token = "6aec0b895777d03aee84123bb2109904dfe560cc";
+  const api = new TodoistApi(token);
+  const myProjectID = "2293678668";
+
+  /*api.getProjects()
+    .then((projects) => console.log(projects))
+    .catch((error) => console.log(error))*/
+
+  useEffect(() => {
+    api
+      .getTasks()
+      .then((tasks) => {
+        setActiveItems(tasks);
+      })
+      .catch((error) => console.log(error));
+  });
+
+  useEffect(() => {
+    axios
+      .get("https://api.todoist.com/sync/v8/completed/get_all", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      .then(
+        (response) => {
+          //console.log(response.data.items);
+          setCompletedItems(response.data.items);
+        },
+        [searchValue]
+      );
+  });
+
+  const handleAddItem = () => {
+    api.addTask({ content: itemToAdd, projectId: myProjectID }).then((task) => {
+      setActiveItems([...activeItems, task]);
+    });
     setItemToAdd("");
   };
 
-  const handleItemDone = ({ key }) => {
-    setItems((prevItems) =>
-      prevItems.map((item) => {
-        if (item.key === key) {
-          return { ...item, done: !item.done };
-        } else return item;
-      })
-    );
+  const toggleItemDone = ({ id, completed }) => {
+    api.closeTask(id).then((isSuccess) => {
+      setActiveItems(
+        activeItems.map((item) => {
+          if (item.id === id) {
+            return {
+              ...item,
+              completed: !completed
+            };
+          }
+          return item;
+        })
+      );
+    });
   };
 
-  const handleImportant = ({ key }) => {
-    setItems((prevItems) =>
-      prevItems.map((item) => {
-        if (item.key === key) {
-          return { ...item, important: !item.important };
-        } else return item;
-      })
-    );
-  };
-
-  const deleteItem = ({ key }) => {
-    //console.log(key);
-    const newList = items.filter((item) => item.key !== key);
-    setItems(newList);
-  };
-
+  const [filterType, setFilterType] = useState("active");
   const handleFilterItems = (type) => {
     setFilterType(type);
   };
-
-  const amountDone =
-    items.length > 0 ? items.filter((item) => item.done).length : 0;
-
-  const amountLeft = items.length - amountDone;
-
-  const filteredItems =
-    !filterType || filterType === "all"
-      ? items
-      : filterType === "active"
-      ? items.filter((item) => !item.done)
-      : items.filter((item) => item.done);
 
   return (
     <div className="todo-app">
       {/* App-header */}
       <div className="app-header d-flex">
         <h1>Todo List</h1>
-        <h2>
-          {amountLeft} more to do, {amountDone} done
-        </h2>
       </div>
 
       <div className="top-panel d-flex">
         {/* Search-panel */}
         <input
-          value={searchTerm}
           type="text"
           className="form-control search-input"
           placeholder="type to search"
-          onChange={handleChangeSearchTerm}
+          value={searchValue}
+          onChange={(event) => setSearchValue(event.target.value)}
         />
-        {/* Item-status-filter */}
+
+        {/* Buttons */}
         <div className="btn-group">
           {buttons.map((item) => (
             <button
@@ -146,54 +120,75 @@ function App() {
         </div>
       </div>
 
-      {/* List-group */}
+      {/* Active-list-group */}
       <ul className="list-group todo-list">
-        {filteredItems.length > 0 &&
-          filteredItems
-            .filter((item) => {
-              if (searchTerm === "") {
-                return item;
-              } else if (
-                item.label.toLowerCase().includes(searchTerm.toLowerCase())
-              ) {
-                return item;
-              }
-            })
-            .map((item) => (
-              <li key={item.key} className="list-group-item">
+        {filterType === "active" &&
+          activeItems.length > 0 &&
+          activeItems.map((item) => (
+            <li key={item.id} className="list-group-item">
+              <span
+                className={`todo-list-item${item.completed ? " done" : ""}`}
+              >
                 <span
-                  className={`todo-list-item${
-                    item.done ? " done" : ""
-                  } todo-list-item${item.important ? " important" : ""}`}
+                  className="todo-list-item-label"
+                  onClick={() => toggleItemDone(item)}
                 >
-                  <span
-                    className="todo-list-item-label"
-                    onClick={() => handleItemDone(item)}
-                  >
-                    {item.label}
-                  </span>
-
-                  <button
-                    type="button"
-                    className="btn btn-outline-danger btn-sm float-right"
-                    onClick={() => deleteItem(item)}
-                  >
-                    <i className="fa fa-trash-o" />
-                  </button>
-
-                  <button
-                    type="button"
-                    className="btn btn-outline-success btn-sm float-right "
-                    onClick={() => handleImportant(item)}
-                  >
-                    <i className="fa fa-exclamation" />
-                  </button>
+                  {item.content}
                 </span>
-              </li>
-            ))}
+
+                <button
+                  type="button"
+                  className="btn btn-outline-success btn-sm float-right"
+                >
+                  <i className="fa fa-exclamation" />
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-outline-danger btn-sm float-right"
+                >
+                  <i className="fa fa-trash-o" />
+                </button>
+              </span>
+            </li>
+          ))}
       </ul>
 
-      {/* Add form */}
+      {/* Completed-list-group */}
+      <ul className="list-group todo-list">
+        {filterType === "completed" &&
+          completedItems.length > 0 &&
+          completedItems.map((item) => (
+            <li key={item.id} className="list-group-item">
+              <span
+                className={`todo-list-item${item.completed ? " done" : ""}`}
+              >
+                <span
+                  className="todo-list-item-label"
+                  //onClick={() => uncompleteItem(item)}
+                >
+                  {item.content}
+                </span>
+
+                <button
+                  type="button"
+                  className="btn btn-outline-success btn-sm float-right"
+                >
+                  <i className="fa fa-exclamation" />
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-outline-danger btn-sm float-right"
+                >
+                  <i className="fa fa-trash-o" />
+                </button>
+              </span>
+            </li>
+          ))}
+      </ul>
+
+      {/* Add active tasks form */}
       <div className="item-add-form d-flex">
         <input
           value={itemToAdd}
