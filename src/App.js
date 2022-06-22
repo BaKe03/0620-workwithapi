@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import "./styles.css";
+import "./App.css";
 import { TodoistApi } from "@doist/todoist-api-typescript";
 import axios from "axios";
 
